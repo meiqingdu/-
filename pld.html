@@ -1,0 +1,1458 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>复古拍立得相机 📸</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 50%, #f5e6d3 100%);
+            background-attachment: fixed;
+            font-family: 'Comic Sans MS', 'Chalkboard', cursive, sans-serif;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 背景装饰 */
+        .bg-decorations {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .deco {
+            position: absolute;
+            font-size: 40px;
+            opacity: 0.5;
+            animation: floatDeco 8s ease-in-out infinite;
+        }
+
+        .deco:nth-child(1) { top: 8%; left: 5%; animation-delay: 0s; }
+        .deco:nth-child(2) { top: 15%; right: 10%; animation-delay: 1s; font-size: 30px; }
+        .deco:nth-child(3) { top: 35%; right: 5%; animation-delay: 2s; }
+        .deco:nth-child(4) { top: 5%; left: 30%; animation-delay: 3s; font-size: 25px; }
+        .deco:nth-child(5) { top: 25%; left: 15%; animation-delay: 4s; font-size: 35px; }
+        .deco:nth-child(6) { top: 45%; right: 15%; animation-delay: 1.5s; font-size: 28px; }
+
+        @keyframes floatDeco {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(10deg); }
+        }
+
+        /* 照片墙 */
+        .photo-wall {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 闪光效果 */
+        .flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #fff 0%, rgba(255,255,220,0.9) 100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .flash-overlay.active {
+            animation: flashScreen 0.35s ease-out;
+        }
+
+        @keyframes flashScreen {
+            0% { opacity: 0.95; }
+            100% { opacity: 0; }
+        }
+
+        /* 提示框 */
+        .toast {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-size: 15px;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            z-index: 10000;
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border: 3px solid rgba(255,255,255,0.25);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* 相机容器 */
+        .camera-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        /* 相机主体 */
+        .camera {
+            width: 320px;
+            height: 420px;
+            background: linear-gradient(180deg, #ff8a80 0%, #ff5252 50%, #d32f2f 100%);
+            border-radius: 35px 35px 30px 30px;
+            position: relative;
+            box-shadow: 
+                0 25px 60px rgba(211, 47, 47, 0.4),
+                inset 0 5px 30px rgba(255, 255, 255, 0.25),
+                inset 0 -10px 30px rgba(0, 0, 0, 0.15);
+            border: 5px solid #333;
+        }
+
+        /* 相机顶部 */
+        .camera-top {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 28px;
+            background: linear-gradient(180deg, #424242 0%, #212121 100%);
+            border-radius: 12px 12px 0 0;
+            border: 4px solid #333;
+            border-bottom: none;
+        }
+
+        .photo-slot {
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 14px;
+            background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
+            border-radius: 4px;
+            z-index: 5;
+            box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.9);
+        }
+
+        /* 闪光灯 */
+        .flash {
+            position: absolute;
+            top: 25px;
+            right: 28px;
+            width: 58px;
+            height: 58px;
+            background: linear-gradient(145deg, #eceff1, #b0bec5);
+            border-radius: 50%;
+            border: 4px solid #333;
+            box-shadow: 
+                inset 0 5px 15px rgba(255, 255, 255, 0.7),
+                0 5px 15px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flash-inner {
+            width: 38px;
+            height: 38px;
+            background: radial-gradient(circle, #fff 0%, #f5f5f5 50%, #e0e0e0 100%);
+            border-radius: 50%;
+            transition: all 0.15s ease;
+        }
+
+        .flash.active .flash-inner {
+            background: radial-gradient(circle, #fffde7 0%, #fff59d 50%, #ffee58 100%);
+            box-shadow: 0 0 40px #ffeb3b, 0 0 80px #ffc107;
+        }
+
+        /* 取景器 */
+        .viewfinder {
+            position: absolute;
+            top: 30px;
+            left: 28px;
+            width: 48px;
+            height: 38px;
+            background: linear-gradient(180deg, #37474f 0%, #263238 100%);
+            border-radius: 8px;
+            border: 3px solid #455a64;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .viewfinder-glass {
+            width: 32px;
+            height: 22px;
+            background: linear-gradient(180deg, #81d4fa 0%, #29b6f6 100%);
+            border-radius: 4px;
+            opacity: 0.85;
+        }
+
+        /* 计数器 */
+        .counter {
+            position: absolute;
+            top: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #212121;
+            color: #ff5252;
+            padding: 5px 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            border: 3px solid #333;
+            letter-spacing: 3px;
+        }
+
+        /* 镜头区域 */
+        .lens-container {
+            position: absolute;
+            top: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 180px;
+            background: linear-gradient(145deg, #fff8e1, #ffecb3);
+            border-radius: 20px;
+            border: 4px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        /* 镜头 */
+        .lens {
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(145deg, #37474f 0%, #263238 100%);
+            border-radius: 50%;
+            position: relative;
+            border: 6px solid #546e7a;
+            box-shadow: 
+                0 12px 30px rgba(0, 0, 0, 0.4),
+                inset 0 -8px 25px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .lens-ring {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            border: 4px solid #455a64;
+            border-radius: 50%;
+        }
+
+        .lens-glass {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: radial-gradient(circle, #1a237e 0%, #0d1421 100%);
+            border: 3px solid #1a237e;
+        }
+
+        #videoPreview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .lens-reflection {
+            position: absolute;
+            top: 10%;
+            left: 12%;
+            width: 40px;
+            height: 28px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, transparent 100%);
+            border-radius: 50%;
+            transform: rotate(-25deg);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 滤镜选择器 */
+        .filter-selector {
+            position: absolute;
+            top: 275px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-nav-btn {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(145deg, #fff, #e0e0e0);
+            border: 3px solid #333;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .filter-nav-btn:hover {
+            transform: scale(1.1);
+            background: linear-gradient(145deg, #fff, #f5f5f5);
+        }
+
+        .filter-nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .filter-display {
+            width: 120px;
+            height: 40px;
+            background: linear-gradient(145deg, #212121, #1a1a1a);
+            border: 3px solid #333;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: inset 0 3px 10px rgba(0,0,0,0.5);
+        }
+
+        .filter-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #555;
+        }
+
+        .filter-name {
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* 彩虹条纹 */
+        .rainbow-stripe {
+            position: absolute;
+            bottom: 70px;
+            left: 25px;
+            right: 25px;
+            height: 35px;
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 3px solid #333;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .rainbow-stripe span {
+            flex: 1;
+        }
+
+        .rainbow-stripe span:nth-child(1) { background: #f44336; }
+        .rainbow-stripe span:nth-child(2) { background: #ff9800; }
+        .rainbow-stripe span:nth-child(3) { background: #ffeb3b; }
+        .rainbow-stripe span:nth-child(4) { background: #4caf50; }
+        .rainbow-stripe span:nth-child(5) { background: #2196f3; }
+        .rainbow-stripe span:nth-child(6) { background: #9c27b0; }
+
+        /* 品牌 */
+        .brand {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 3px 3px 0 #333, -1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333;
+            letter-spacing: 4px;
+        }
+
+        /* 快门按钮 */
+        .shutter-btn {
+            position: absolute;
+            bottom: 140px;
+            right: -38px;
+            width: 76px;
+            height: 76px;
+            background: linear-gradient(180deg, #f44336 0%, #c62828 100%);
+            border-radius: 50%;
+            border: 5px solid #333;
+            cursor: pointer;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.4),
+                inset 0 4px 15px rgba(255, 255, 255, 0.3);
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shutter-btn::after {
+            content: '';
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(180deg, #ef5350 0%, #e53935 100%);
+            border-radius: 50%;
+            border: 4px solid #b71c1c;
+        }
+
+        .shutter-btn:hover {
+            transform: scale(1.08);
+        }
+
+        .shutter-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 启动按钮 */
+        .start-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #26a69a 0%, #00897b 100%);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 20;
+            font-family: inherit;
+            box-shadow: 0 8px 25px rgba(0, 137, 123, 0.45);
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+        }
+
+        .start-btn:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        /* 螺丝 */
+        .screw {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(145deg, #78909c, #455a64);
+            border-radius: 50%;
+            border: 2px solid #263238;
+        }
+
+        .screw::after {
+            content: '+';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #263238;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .screw-tl { top: 14px; left: 14px; }
+        .screw-tr { top: 14px; right: 14px; }
+        .screw-bl { bottom: 14px; left: 14px; }
+        .screw-br { bottom: 14px; right: 14px; }
+
+        /* 弹出中的照片 */
+        .ejecting-photo {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            background: #fff;
+            padding: 10px 10px 45px 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 4;
+            border-radius: 4px;
+        }
+
+        .ejecting-photo img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            filter: blur(25px) brightness(1.3) saturate(0.4);
+            transition: filter 3.5s ease-out;
+            border-radius: 2px;
+        }
+
+        .ejecting-photo.developing img {
+            filter: blur(0) brightness(1) saturate(1);
+        }
+
+        .ejecting-photo .photo-time {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #888;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* 可拖动照片 */
+        .photo-card {
+            position: absolute;
+            width: 200px;
+            background: #fff;
+            padding: 12px 12px 55px 12px;
+            box-shadow: 
+                0 15px 40px rgba(0, 0, 0, 0.2),
+                0 0 0 1px rgba(0,0,0,0.05);
+            cursor: grab;
+            z-index: 50;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            border-radius: 4px;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .photo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+            pointer-events: none;
+            border-radius: 4px;
+        }
+
+        .photo-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            pointer-events: none;
+            border-radius: 2px;
+        }
+
+        .photo-card:hover {
+            transform: scale(1.03) rotate(1deg);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .photo-card.dragging {
+            cursor: grabbing;
+            transform: scale(1.08) rotate(3deg);
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+            z-index: 1000 !important;
+        }
+
+        /* 照片时间戳 */
+        .photo-time {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+        }
+
+        /* 照片按钮 - 修复移动端 */
+        .photo-btn {
+            position: absolute;
+            top: -15px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            /* 移动端始终显示 */
+            opacity: 1;
+            /* 确保可点击 */
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+
+        .photo-btn:active {
+            transform: scale(0.9);
+        }
+
+        .photo-btn.download {
+            left: -15px;
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: white;
+        }
+
+        .photo-btn.delete {
+            right: -15px;
+            background: linear-gradient(135deg, #f44336, #c62828);
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* 桌面端悬停效果 */
+        @media (hover: hover) {
+            .photo-btn {
+                opacity: 0;
+            }
+            
+            .photo-card:hover .photo-btn {
+                opacity: 1;
+            }
+            
+            .photo-btn:hover {
+                transform: scale(1.15);
+            }
+        }
+
+        /* 滤镜效果 */
+        .filter-vintage { filter: sepia(0.4) contrast(1.1) brightness(0.95); }
+        .filter-bw { filter: grayscale(1) contrast(1.15); }
+        .filter-warm { filter: sepia(0.25) saturate(1.3) brightness(1.05); }
+        .filter-cool { filter: saturate(0.85) brightness(1.08) hue-rotate(15deg); }
+        .filter-dreamy { filter: saturate(0.75) brightness(1.15) contrast(0.9) blur(0.5px); }
+        .filter-sunset { filter: sepia(0.35) saturate(1.5) brightness(1.05) hue-rotate(-15deg); }
+        .filter-forest { filter: saturate(1.25) brightness(0.95) hue-rotate(40deg); }
+        .filter-pink { filter: saturate(1.2) brightness(1.08) hue-rotate(-25deg); }
+        .filter-retro { filter: sepia(0.5) saturate(0.8) contrast(1.2) brightness(0.9); }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .camera-container {
+                bottom: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .camera {
+                width: 260px;
+                height: 350px;
+            }
+
+            .lens-container {
+                width: 160px;
+                height: 145px;
+                top: 72px;
+            }
+
+            .lens {
+                width: 115px;
+                height: 115px;
+            }
+
+            .lens-glass {
+                width: 82px;
+                height: 82px;
+            }
+
+            .filter-selector {
+                top: 225px;
+                gap: 8px;
+            }
+
+            .filter-nav-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+
+            .filter-display {
+                width: 100px;
+                height: 34px;
+            }
+
+            .filter-dot {
+                width: 12px;
+                height: 12px;
+            }
+
+            .filter-name {
+                font-size: 11px;
+            }
+
+            .shutter-btn {
+                right: -30px;
+                bottom: 115px;
+                width: 60px;
+                height: 60px;
+            }
+
+            .shutter-btn::after {
+                width: 40px;
+                height: 40px;
+            }
+
+            .flash {
+                width: 45px;
+                height: 45px;
+                top: 20px;
+                right: 20px;
+            }
+
+            .flash-inner {
+                width: 28px;
+                height: 28px;
+            }
+
+            .viewfinder {
+                width: 38px;
+                height: 30px;
+                top: 22px;
+                left: 20px;
+            }
+
+            .rainbow-stripe {
+                bottom: 55px;
+                height: 28px;
+                left: 20px;
+                right: 20px;
+            }
+
+            .brand {
+                font-size: 22px;
+                bottom: 18px;
+            }
+
+            .counter {
+                font-size: 15px;
+                padding: 4px 12px;
+            }
+
+            .photo-card {
+                width: 150px;
+                padding: 10px 10px 45px 10px;
+            }
+
+            .photo-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 14px;
+                top: -12px;
+            }
+
+            .photo-btn.download {
+                left: -12px;
+            }
+
+            .photo-btn.delete {
+                right: -12px;
+                font-size: 18px;
+            }
+
+            .photo-time {
+                font-size: 10px;
+                bottom: 12px;
+            }
+
+            .ejecting-photo {
+                width: 115px;
+                padding: 8px 8px 38px 8px;
+            }
+
+            .camera-top {
+                width: 160px;
+            }
+
+            .photo-slot {
+                width: 120px;
+            }
+
+            .start-btn {
+                font-size: 11px;
+                padding: 10px 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .deco:nth-child(n+4) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景装饰 -->
+    <div class="bg-decorations">
+        <span class="deco">✨</span>
+        <span class="deco">⭐</span>
+        <span class="deco">🌸</span>
+        <span class="deco">💫</span>
+        <span class="deco">🌟</span>
+        <span class="deco">✨</span>
+    </div>
+
+    <!-- 照片墙 -->
+    <div class="photo-wall" id="photoWall"></div>
+
+    <!-- 闪光效果 -->
+    <div class="flash-overlay" id="flashOverlay"></div>
+
+    <!-- 提示框 -->
+    <div class="toast" id="toast">欢迎使用！</div>
+
+    <!-- 相机 -->
+    <div class="camera-container" id="cameraContainer">
+        <div class="camera" id="camera">
+            <!-- 顶部 -->
+            <div class="camera-top"></div>
+            <div class="photo-slot"></div>
+
+            <!-- 计数器 -->
+            <div class="counter" id="counter">00</div>
+
+            <!-- 闪光灯 -->
+            <div class="flash" id="flash">
+                <div class="flash-inner"></div>
+            </div>
+
+            <!-- 取景器 -->
+            <div class="viewfinder">
+                <div class="viewfinder-glass"></div>
+            </div>
+
+            <!-- 镜头区域 -->
+            <div class="lens-container">
+                <div class="lens">
+                    <div class="lens-ring"></div>
+                    <div class="lens-glass" id="lensGlass">
+                        <video id="videoPreview" autoplay playsinline muted></video>
+                        <button class="start-btn" id="startBtn">📷 开启相机</button>
+                    </div>
+                    <div class="lens-reflection"></div>
+                </div>
+            </div>
+
+            <!-- 滤镜选择器 -->
+            <div class="filter-selector">
+                <button class="filter-nav-btn" id="filterPrev">◀</button>
+                <div class="filter-display">
+                    <div class="filter-dot" id="filterDot"></div>
+                    <span class="filter-name" id="filterName">原图</span>
+                </div>
+                <button class="filter-nav-btn" id="filterNext">▶</button>
+            </div>
+
+            <!-- 彩虹条纹 -->
+            <div class="rainbow-stripe">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <!-- 品牌 -->
+            <div class="brand">POLAROID</div>
+
+            <!-- 螺丝 -->
+            <div class="screw screw-tl"></div>
+            <div class="screw screw-tr"></div>
+            <div class="screw screw-bl"></div>
+            <div class="screw screw-br"></div>
+
+            <!-- 快门按钮 -->
+            <button class="shutter-btn" id="shutterBtn" title="拍照 (空格键)"></button>
+        </div>
+    </div>
+
+    <!-- 隐藏的canvas -->
+    <canvas id="canvas" style="display: none;"></canvas>
+    <canvas id="cardCanvas" style="display: none;"></canvas>
+
+    <script>
+        // 滤镜配置
+        const filters = [
+            { id: 'normal', name: '原图', color: '#42a5f5' },
+            { id: 'vintage', name: '复古', color: '#8d6e63' },
+            { id: 'bw', name: '黑白', color: '#616161' },
+            { id: 'warm', name: '暖阳', color: '#ff7043' },
+            { id: 'cool', name: '清冷', color: '#4dd0e1' },
+            { id: 'dreamy', name: '梦幻', color: '#ab47bc' },
+            { id: 'sunset', name: '日落', color: '#ffa726' },
+            { id: 'forest', name: '森林', color: '#66bb6a' },
+            { id: 'pink', name: '粉嫩', color: '#f48fb1' },
+            { id: 'retro', name: '怀旧', color: '#a1887f' }
+        ];
+
+        // 状态
+        const state = {
+            stream: null,
+            photoCount: 0,
+            isCapturing: false,
+            filterIndex: 0,
+            highestZ: 50,
+            audioCtx: null
+        };
+
+        // DOM
+        const $ = id => document.getElementById(id);
+        const video = $('videoPreview');
+        const canvas = $('canvas');
+        const ctx = canvas.getContext('2d');
+        const cardCanvas = $('cardCanvas');
+        const cardCtx = cardCanvas.getContext('2d');
+        const lensGlass = $('lensGlass');
+        const filterDot = $('filterDot');
+        const filterName = $('filterName');
+
+        // 检测是否是移动设备
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // 更新滤镜显示
+        function updateFilterDisplay() {
+            const filter = filters[state.filterIndex];
+            filterDot.style.background = filter.color;
+            filterName.textContent = filter.name;
+            
+            lensGlass.className = 'lens-glass';
+            if (filter.id !== 'normal') {
+                lensGlass.classList.add(`filter-${filter.id}`);
+            }
+        }
+
+        // 切换滤镜
+        function changeFilter(direction) {
+            state.filterIndex = (state.filterIndex + direction + filters.length) % filters.length;
+            updateFilterDisplay();
+            showToast(`🎨 ${filters[state.filterIndex].name}`);
+        }
+
+        // 提示
+        function showToast(msg, duration = 2500) {
+            const toast = $('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        // 音频
+        function initAudio() {
+            if (!state.audioCtx) {
+                state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (state.audioCtx.state === 'suspended') {
+                state.audioCtx.resume();
+            }
+        }
+
+        function playShutterSound() {
+            initAudio();
+            const ac = state.audioCtx;
+            const now = ac.currentTime;
+
+            const osc1 = ac.createOscillator();
+            const gain1 = ac.createGain();
+            osc1.connect(gain1);
+            gain1.connect(ac.destination);
+            osc1.frequency.setValueAtTime(1500, now);
+            osc1.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+            gain1.gain.setValueAtTime(0.35, now);
+            gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc1.start(now);
+            osc1.stop(now + 0.1);
+
+            const osc2 = ac.createOscillator();
+            const gain2 = ac.createGain();
+            osc2.connect(gain2);
+            gain2.connect(ac.destination);
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(180, now + 0.06);
+            osc2.frequency.exponentialRampToValueAtTime(40, now + 0.22);
+            gain2.gain.setValueAtTime(0.2, now + 0.06);
+            gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+            osc2.start(now + 0.06);
+            osc2.stop(now + 0.22);
+
+            const noise = ac.createOscillator();
+            const noiseGain = ac.createGain();
+            const noiseFilter = ac.createBiquadFilter();
+            noise.type = 'sawtooth';
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(ac.destination);
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.value = 600;
+            noise.frequency.setValueAtTime(60, now + 0.2);
+            noiseGain.gain.setValueAtTime(0.12, now + 0.2);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+            noise.start(now + 0.2);
+            noise.stop(now + 0.7);
+        }
+
+        // 启动相机
+        async function startCamera() {
+            try {
+                state.stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } }
+                });
+                video.srcObject = state.stream;
+                $('startBtn').style.display = 'none';
+                showToast('📸 相机就绪！按红色按钮拍照');
+            } catch (err) {
+                console.error('相机错误:', err);
+                showToast('❌ 无法访问相机');
+            }
+        }
+
+        // 闪光
+        function triggerFlash() {
+            $('flash').classList.add('active');
+            $('flashOverlay').classList.add('active');
+            setTimeout(() => {
+                $('flash').classList.remove('active');
+                $('flashOverlay').classList.remove('active');
+            }, 350);
+        }
+
+        // 应用滤镜
+        function applyFilter(ctx, filterId, w, h) {
+            if (filterId === 'normal') return;
+            
+            const imageData = ctx.getImageData(0, 0, w, h);
+            const d = imageData.data;
+
+            for (let i = 0; i < d.length; i += 4) {
+                let r = d[i], g = d[i+1], b = d[i+2];
+
+                switch (filterId) {
+                    case 'vintage':
+                        d[i] = Math.min(255, r * 1.1 + 35);
+                        d[i+1] = Math.min(255, g * 0.9 + 20);
+                        d[i+2] = Math.min(255, b * 0.75);
+                        break;
+                    case 'bw':
+                        const gray = r * 0.299 + g * 0.587 + b * 0.114;
+                        d[i] = d[i+1] = d[i+2] = gray;
+                        break;
+                    case 'warm':
+                        d[i] = Math.min(255, r * 1.15 + 15);
+                        d[i+1] = Math.min(255, g * 1.05);
+                        d[i+2] = Math.max(0, b * 0.85);
+                        break;
+                    case 'cool':
+                        d[i] = Math.max(0, r * 0.88);
+                        d[i+1] = Math.min(255, g * 1.02);
+                        d[i+2] = Math.min(255, b * 1.18 + 15);
+                        break;
+                    case 'dreamy':
+                        d[i] = Math.min(255, r * 1.08 + 25);
+                        d[i+1] = Math.min(255, g * 1.05 + 20);
+                        d[i+2] = Math.min(255, b * 1.15 + 30);
+                        break;
+                    case 'sunset':
+                        d[i] = Math.min(255, r * 1.25 + 25);
+                        d[i+1] = Math.min(255, g * 0.92 + 15);
+                        d[i+2] = Math.max(0, b * 0.65);
+                        break;
+                    case 'forest':
+                        d[i] = Math.max(0, r * 0.82);
+                        d[i+1] = Math.min(255, g * 1.2 + 12);
+                        d[i+2] = Math.min(255, b * 0.88);
+                        break;
+                    case 'pink':
+                        d[i] = Math.min(255, r * 1.12 + 25);
+                        d[i+1] = Math.min(255, g * 0.92);
+                        d[i+2] = Math.min(255, b * 1.08 + 20);
+                        break;
+                    case 'retro':
+                        d[i] = Math.min(255, r * 1.05 + 50);
+                        d[i+1] = Math.min(255, g * 0.85 + 35);
+                        d[i+2] = Math.min(255, b * 0.7 + 15);
+                        break;
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // 获取时间
+        function getTimeString() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            return `${y}.${m}.${d} ${h}:${min}`;
+        }
+
+        // 生成拍立得卡片图片
+        function generatePolaroidCard(imageData, timeStr) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const photoSize = 600;
+                    const padding = 40;
+                    const bottomPadding = 120;
+                    const cardWidth = photoSize + padding * 2;
+                    const cardHeight = photoSize + padding + bottomPadding;
+                    
+                    cardCanvas.width = cardWidth;
+                    cardCanvas.height = cardHeight;
+                    
+                    // 白色背景
+                    cardCtx.fillStyle = '#ffffff';
+                    cardCtx.fillRect(0, 0, cardWidth, cardHeight);
+                    
+                    // 纸张纹理
+                    cardCtx.fillStyle = 'rgba(0, 0, 0, 0.02)';
+                    for (let i = 0; i < 1000; i++) {
+                        const x = Math.random() * cardWidth;
+                        const y = Math.random() * cardHeight;
+                        cardCtx.fillRect(x, y, 1, 1);
+                    }
+                    
+                    // 照片
+                    cardCtx.drawImage(img, padding, padding, photoSize, photoSize);
+                    
+                    // 边框
+                    cardCtx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+                    cardCtx.lineWidth = 1;
+                    cardCtx.strokeRect(padding, padding, photoSize, photoSize);
+                    
+                    // 时间
+                    cardCtx.fillStyle = '#888888';
+                    cardCtx.font = '24px "Courier New", monospace';
+                    cardCtx.textAlign = 'center';
+                    cardCtx.fillText(timeStr, cardWidth / 2, cardHeight - 45);
+                    
+                    resolve(cardCanvas.toDataURL('image/jpeg', 0.95));
+                };
+                img.src = imageData;
+            });
+        }
+
+        // 下载照片 - 修复移动端
+        function downloadPhoto(cardImageData, filename) {
+            // 方法1: 使用 <a> 标签下载
+            const link = document.createElement('a');
+            link.href = cardImageData;
+            link.download = filename;
+            
+            // iOS Safari 需要特殊处理
+            if (isMobile && /iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                // iOS 上打开新窗口显示图片，让用户长按保存
+                const newWindow = window.open();
+                if (newWindow) {
+                    newWindow.document.write(`
+                        <html>
+                        <head>
+                            <title>长按保存照片</title>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <style>
+                                body { 
+                                    margin: 0; 
+                                    padding: 20px; 
+                                    display: flex; 
+                                    flex-direction: column;
+                                    align-items: center; 
+                                    justify-content: center; 
+                                    min-height: 100vh; 
+                                    background: #f0f0f0;
+                                    font-family: -apple-system, sans-serif;
+                                }
+                                img { 
+                                    max-width: 100%; 
+                                    height: auto; 
+                                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                                    border-radius: 8px;
+                                }
+                                p {
+                                    margin-top: 20px;
+                                    color: #666;
+                                    text-align: center;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <img src="${cardImageData}" alt="拍立得照片">
+                            <p>📱 长按图片选择"添加到照片"保存</p>
+                        </body>
+                        </html>
+                    `);
+                    newWindow.document.close();
+                }
+                showToast('📱 长按图片保存到相册');
+            } else {
+                // 其他设备正常下载
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('📥 照片下载中...');
+            }
+        }
+
+        // 拍照
+        async function capturePhoto() {
+            if (state.isCapturing || !state.stream) {
+                if (!state.stream) showToast('请先开启相机');
+                return;
+            }
+
+            state.isCapturing = true;
+            initAudio();
+            playShutterSound();
+            triggerFlash();
+
+            const w = video.videoWidth || 640;
+            const h = video.videoHeight || 640;
+            canvas.width = w;
+            canvas.height = h;
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            applyFilter(ctx, filters[state.filterIndex].id, w, h);
+
+            const imageData = canvas.toDataURL('image/jpeg', 0.92);
+            const timeStr = getTimeString();
+            const cardImageData = await generatePolaroidCard(imageData, timeStr);
+
+            state.photoCount++;
+            $('counter').textContent = state.photoCount.toString().padStart(2, '0');
+
+            ejectPhoto(imageData, timeStr, cardImageData);
+        }
+
+        // 照片弹出
+        function ejectPhoto(imageData, timeStr, cardImageData) {
+            const photo = document.createElement('div');
+            photo.className = 'ejecting-photo';
+            photo.innerHTML = `
+                <img src="${imageData}" alt="照片">
+                <div class="photo-time">${timeStr}</div>
+            `;
+            $('camera').appendChild(photo);
+
+            let y = 0;
+            const maxY = 210;
+            const speed = 2.8;
+
+            const animate = () => {
+                y += speed;
+                photo.style.transform = `translateX(-50%) translateY(-${y}px)`;
+                
+                if (y < maxY) {
+                    requestAnimationFrame(animate);
+                } else {
+                    setTimeout(() => photo.classList.add('developing'), 400);
+                    setTimeout(() => makeDraggable(photo, imageData, timeStr, cardImageData), 4200);
+                }
+            };
+            requestAnimationFrame(animate);
+        }
+
+        // 转换为可拖动 - 修复移动端按钮
+        function makeDraggable(ejectingPhoto, imageData, timeStr, cardImageData) {
+            const rect = ejectingPhoto.getBoundingClientRect();
+            
+            const card = document.createElement('div');
+            card.className = 'photo-card';
+            card.style.left = rect.left + 'px';
+            card.style.top = rect.top + 'px';
+            card.style.transform = `rotate(${(Math.random() - 0.5) * 12}deg)`;
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'photo-btn download';
+            downloadBtn.innerHTML = '⬇';
+            downloadBtn.title = '下载';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'photo-btn delete';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.title = '删除';
+            
+            const img = document.createElement('img');
+            img.src = imageData;
+            img.alt = '照片';
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'photo-time';
+            timeDiv.textContent = timeStr;
+            
+            card.appendChild(downloadBtn);
+            card.appendChild(deleteBtn);
+            card.appendChild(img);
+            card.appendChild(timeDiv);
+
+            $('photoWall').appendChild(card);
+            ejectingPhoto.remove();
+
+            // 下载按钮事件 - 使用多种事件确保移动端可用
+            const handleDownload = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                downloadPhoto(cardImageData, `polaroid_${Date.now()}.jpg`);
+            };
+            
+            downloadBtn.addEventListener('click', handleDownload);
+            downloadBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDownload(e);
+            }, { passive: false });
+
+            // 删除按钮事件
+            const handleDelete = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                card.style.transition = 'all 0.3s ease';
+                card.style.transform = 'scale(0) rotate(20deg)';
+                card.style.opacity = '0';
+                setTimeout(() => card.remove(), 300);
+            };
+            
+            deleteBtn.addEventListener('click', handleDelete);
+            deleteBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDelete(e);
+            }, { passive: false });
+
+            // 拖动功能
+            setupDrag(card);
+
+            showToast('✨ 拖动照片到任意位置');
+            state.isCapturing = false;
+        }
+
+        // 拖动设置 - 修复与按钮的冲突
+        function setupDrag(el) {
+            let dragging = false;
+            let startX, startY, initX, initY;
+            let hasMoved = false;
+
+            const isButton = (target) => {
+                return target.classList.contains('photo-btn') || 
+                       target.closest('.photo-btn');
+            };
+
+            const start = (e) => {
+                // 如果是按钮，不处理拖动
+                if (isButton(e.target)) {
+                    return;
+                }
+                
+                dragging = true;
+                hasMoved = false;
+                state.highestZ++;
+                el.style.zIndex = state.highestZ;
+
+                const pt = e.touches ? e.touches[0] : e;
+                startX = pt.clientX;
+                startY = pt.clientY;
+                initX = el.offsetLeft;
+                initY = el.offsetTop;
+            };
+
+            const move = (e) => {
+                if (!dragging) return;
+                
+                const pt = e.touches ? e.touches[0] : e;
+                const dx = pt.clientX - startX;
+                const dy = pt.clientY - startY;
+                
+                // 只有移动超过5px才算真正拖动
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                    hasMoved = true;
+                    el.classList.add('dragging');
+                    el.style.left = (initX + dx) + 'px';
+                    el.style.top = (initY + dy) + 'px';
+                    e.preventDefault();
+                }
+            };
+
+            const end = () => {
+                dragging = false;
+                el.classList.remove('dragging');
+            };
+
+            // 鼠标事件
+            el.addEventListener('mousedown', start);
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', end);
+
+            // 触摸事件 - 不阻止按钮区域
+            el.addEventListener('touchstart', (e) => {
+                if (!isButton(e.target)) {
+                    start(e);
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (dragging && hasMoved) {
+                    move(e);
+                }
+            }, { passive: false });
+            
+            document.addEventListener('touchend', end);
+        }
+
+        // 事件绑定
+        $('shutterBtn').addEventListener('click', capturePhoto);
+        $('startBtn').addEventListener('click', startCamera);
+        $('filterPrev').addEventListener('click', () => changeFilter(-1));
+        $('filterNext').addEventListener('click', () => changeFilter(1));
+
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                capturePhoto();
+            } else if (e.code === 'ArrowLeft') {
+                changeFilter(-1);
+            } else if (e.code === 'ArrowRight') {
+                changeFilter(1);
+            }
+        });
+
+        // 初始化
+        updateFilterDisplay();
+        setTimeout(() => showToast('👋 点击镜头开启相机'), 1200);
+    </script>
+</body>
+</html>
